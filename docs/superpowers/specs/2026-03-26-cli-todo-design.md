@@ -98,6 +98,7 @@ todos:
     status: "todo"
     tags: ["backend", "auth"]
     due_date: "2026-04-01"
+    completed_at: null
     created_at: "2026-03-26T10:00:00"
     updated_at: "2026-03-26T10:00:00"
 ```
@@ -116,23 +117,26 @@ categories:
 defaults:
   category: "Work"
   priority: 3
-  projects_root: "~/projects"
+  projects_roots:
+    - "~/projects"
+    - "~/work"
 ```
 
 ### Field Definitions
 
 | Field | Type | Required | Default | Notes |
 |-------|------|----------|---------|-------|
-| `id` | string | auto-generated | — | First 6 chars of UUID4 hex, regenerate on collision |
+| `id` | string | auto-generated | — | First 6 chars of UUID4 hex, max 3 retries on collision, error if all collide |
 | `title` | string | yes | — | Short description of the task |
 | `description` | string | no | `""` | Optional longer details |
 | `priority` | int (1-5) | yes | 3 (Medium) | 1=Critical, 2=High, 3=Medium, 4=Low, 5=None |
 | `category` | string | yes | "Work" | Must exist in config categories |
-| `project` | string | no | `null` | Auto-detected from pwd if under projects_root |
+| `project` | string | no | `null` | Auto-detected from pwd if under any `projects_roots` path |
 | `status` | enum | auto | "todo" | `todo`, `in_progress`, `done`, `archived` |
 | `tags` | list[string] | no | `[]` | Freeform tags |
 | `due_date` | date | no | `null` | ISO format YYYY-MM-DD |
 | `created_at` | datetime | auto | now | ISO format |
+| `completed_at` | datetime | no | `null` | Set when status transitions to `done`, cleared if reopened |
 | `updated_at` | datetime | auto | now | Updated on any edit |
 
 ### Priority Labels & Colors
@@ -147,7 +151,7 @@ defaults:
 
 ### File Locking
 
-Simple file-based write lock at `~/.todo/.lock` to prevent corruption from concurrent writes across terminal sessions. Acquire before write, release after. Stale lock detection (>5s age) with auto-cleanup.
+PID-based write lock at `~/.todo/.lock`. The lock file contains the PID of the holding process. Acquire before write, release after. Stale lock detection: if the lock is >60s old OR the PID is no longer alive, auto-cleanup and re-acquire.
 
 ---
 
@@ -166,8 +170,8 @@ Create a new TODO.
 - `-d` / `--description` (string)
 
 **Behavior:**
-- Generates a 6-char ID
-- Auto-detects project if pwd is under `projects_root`
+- Generates a 6-char ID (max 3 retries on collision)
+- Auto-detects project if pwd is under any configured `projects_roots` path
 - Auto-runs `generate` for the affected project
 - Prints the created TODO summary
 
@@ -181,10 +185,14 @@ List TODOs with optional filters.
 - `-pj` / `--project` (string)
 - `-s` / `--status` (string)
 - `-a` / `--all` (bool)
+- `--tag` (string, no short flag — filters TODOs containing the given tag)
+
+Note: Short flags are scoped per-subcommand (Typer handles this naturally).
 
 **Behavior:**
 - No flags in a project directory: auto-filters to that project
-- `-a` / `--all`: shows all TODOs across all projects
+- No flags outside a project directory: shows all TODOs (equivalent to `--all`)
+- `-a` / `--all`: explicitly shows all TODOs across all projects
 - Multiple filters stack (AND logic)
 - Output: Rich table with columns — ID, Priority (colored label), Title, Category, Status, Due
 - Overdue items highlighted in red
@@ -197,10 +205,14 @@ Display full details of a single TODO in a Rich panel.
 
 Update fields on an existing TODO.
 
-**Flags:** Same as `add` — only provided flags are updated.
+**Flags:** Same as `add`, plus:
+- `-s` / `--status` (string) — allows setting any valid status (`todo`, `in_progress`, `done`, `archived`). This is the way to revert a mistaken status transition (e.g., `todo edit <id> -s todo` to reopen a done item).
+
+Only provided flags are updated.
 
 **Behavior:**
 - Updates `updated_at` timestamp
+- If status transitions to `done`, sets `completed_at`; if transitioning away from `done`, clears `completed_at`
 - Auto-runs `generate` for the affected project
 
 ### `todo done <id>`
@@ -215,7 +227,9 @@ Mark a TODO as in_progress. Sets `status` to `in_progress`, updates `updated_at`
 
 Archive completed TODOs.
 
-**Arguments:** `<id>` to archive one, or `--all-done` flag to archive all completed.
+**Arguments:** `<id>` (required positional) to archive one, or `--all-done` flag to archive all completed. Running `todo archive` with neither argument nor flag produces an error. Only TODOs with `done` status can be archived — archiving a `todo` or `in_progress` item is rejected with an error.
+
+Auto-runs `generate` for affected projects.
 
 ### `todo delete <id>`
 
@@ -232,7 +246,7 @@ Manage categories and defaults.
 **Subcommands:**
 - `todo config categories list`
 - `todo config categories add "Pets"`
-- `todo config categories remove "Social"`
+- `todo config categories remove "Social"` (refuses if TODOs exist with that category; use `--force` to override)
 - `todo config defaults set priority 2`
 - `todo config defaults set category "Work"`
 
@@ -250,7 +264,7 @@ Regenerate per-project `.todos.md` and CLAUDE.md pointer.
 
 ### Per-Project `.todos.md`
 
-Generated read-only markdown file placed at the project root.
+Generated markdown file placed at the project root. Should be added to `.gitignore` (the `generate` command will offer to do this automatically if `.gitignore` exists and `.todos.md` is not already listed).
 
 ```markdown
 <!-- AUTO-GENERATED by todo CLI - Do not edit manually -->
@@ -275,24 +289,53 @@ Generated read-only markdown file placed at the project root.
 
 ### CLAUDE.md Pointer
 
-Auto-injected/updated section at the end of the project's CLAUDE.md:
+Auto-injected/updated section at the end of the project's CLAUDE.md, using sentinel comments for safe detection and replacement:
 
 ```markdown
+<!-- BEGIN TODO CLI -->
 ## Project TODOs
 This project has **3 open** TODOs (1 critical). See `.todos.md` for the full list.
 Run `todo list` for details or invoke the `/grab-todos` skill.
+<!-- END TODO CLI -->
 ```
 
 - If CLAUDE.md doesn't exist, creates one with just this section
-- If the section already exists, updates it in place
+- If the sentinel comments already exist, replaces everything between them
+- If CLAUDE.md exists but has no sentinels, appends the section at the end
 - Only counts open items (`todo` + `in_progress` statuses)
 
 ### Project Auto-Detection
 
-When the user runs a command from within a subdirectory of `projects_root` (default `~/projects`):
-1. Walk up from `pwd` to find the first directory directly under `projects_root`
+When the user runs a command from within a subdirectory of any configured `projects_roots` path:
+1. Walk up from `pwd` to find the first directory directly under a `projects_roots` entry
 2. Use that directory name as the project name
 3. Example: `pwd` is `~/projects/cli-tools/src/todo/` → project is `cli-tools`
+
+---
+
+## Error Handling
+
+All errors print to stderr via `rich.console.Console(stderr=True)`.
+
+### Exit Codes
+
+| Code | Meaning | Examples |
+|------|---------|---------|
+| 0 | Success | — |
+| 1 | User error | Invalid ID, validation failure, category not found, invalid priority |
+| 2 | System error | IO error, permission denied, corrupt YAML file, lock acquisition failed |
+
+### Common Error Messages
+
+| Scenario | Message |
+|----------|---------|
+| Invalid TODO ID | `Error: No TODO found with ID 'abc123'` |
+| Invalid priority | `Error: Priority must be between 1 and 5` |
+| Unknown category | `Error: Category 'Foo' not in config. Run 'todo config categories list' to see available categories` |
+| Category removal with existing TODOs | `Error: 3 TODOs use category 'Work'. Use --force to remove anyway` |
+| Corrupt YAML | `Error: Could not parse ~/.todo/todos.yml. File may be corrupted` |
+| Lock acquisition failed | `Error: Could not acquire lock. Another todo process may be running (PID: 12345)` |
+| Archive non-done item | `Error: TODO 'abc123' has status 'todo'. Only done items can be archived` |
 
 ---
 
