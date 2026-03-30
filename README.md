@@ -6,10 +6,10 @@
 <br/>
 
 <div align="center">
-  <a href="https://github.com/lucasluize/cli-tools/stargazers"><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/lucasluize/cli-tools"></a>
-  <a href="https://github.com/lucasluize/cli-tools/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-blue"></a>
+  <a href="https://github.com/lucasluize-tech/cli-todo/stargazers"><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/lucasluize-tech/cli-todo"></a>
+  <a href="https://github.com/lucasluize-tech/cli-todo/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-blue"></a>
   <a href="https://pypi.org/project/todo-cli-tool/"><img alt="PyPI" src="https://img.shields.io/pypi/v/todo-cli-tool"></a>
-  <a href="https://github.com/lucasluize/cli-tools/actions"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/lucasluize/cli-tools/ci.yml"></a>
+  <a href="https://github.com/lucasluize-tech/cli-todo/actions"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/lucasluize-tech/cli-todo/ci.yml"></a>
 </div>
 
 <br/>
@@ -70,7 +70,7 @@ pipx install todo-cli-tool
 ### Or install from source
 
 ```shell
-git clone https://github.com/lucasluize/cli-tools.git
+git clone https://github.com/lucasluize-tech/cli-todo.git
 cd cli-tools
 uv venv --python 3.13
 source .venv/bin/activate
