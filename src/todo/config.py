@@ -58,3 +58,25 @@ class ConfigManager:
         else:
             raise ValueError(f"Invalid default key: '{key}'. Use 'category' or 'priority'")
         self._save(config)
+
+    def list_projects_roots(self) -> list[str]:
+        return self.load().defaults.projects_roots
+
+    def add_projects_root(self, path: str) -> None:
+        config = self.load()
+        resolved = str(Path(path).expanduser().resolve())
+        for existing in config.defaults.projects_roots:
+            if str(Path(existing).expanduser().resolve()) == resolved:
+                raise ValueError(f"Root '{path}' already configured")
+        config.defaults.projects_roots.append(path)
+        self._save(config)
+
+    def remove_projects_root(self, path: str) -> None:
+        config = self.load()
+        resolved = str(Path(path).expanduser().resolve())
+        for existing in config.defaults.projects_roots:
+            if str(Path(existing).expanduser().resolve()) == resolved:
+                config.defaults.projects_roots.remove(existing)
+                self._save(config)
+                return
+        raise ValueError(f"Root '{path}' not found in config")

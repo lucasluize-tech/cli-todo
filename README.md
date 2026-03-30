@@ -131,6 +131,30 @@ todo delete a3f7b2
 
 ### Configuration
 
+#### Project Roots (important!)
+
+Project roots are parent directories that contain your projects. The tool uses these to auto-detect which project you're working in based on your current directory.
+
+By default, `~/projects` and `~/work` are configured. If your projects live elsewhere, add your own roots:
+
+```shell
+# List configured project roots
+todo config roots list
+
+# Add a project root
+todo config roots add ~/code
+todo config roots add ~/personal
+
+# Remove a project root
+todo config roots remove ~/work
+```
+
+**How it works:** If `~/projects` is a root and you run `todo add` from `~/projects/my-app`, the tool detects `my-app` as the project. TODOs are tagged with this project and a `.todos.md` file is generated at `~/projects/my-app/.todos.md`.
+
+If your cwd is not inside any configured root, no project is detected and no `.todos.md` is generated.
+
+#### Categories and Defaults
+
 ```shell
 # List categories
 todo config categories list
@@ -154,7 +178,7 @@ todo generate
 todo generate -a
 ```
 
-When you run `todo add` or `todo done` from within a project directory, the tool automatically:
+When you run `todo add` or `todo done` from within a configured project root, the tool automatically:
 1. Detects the project from your working directory
 2. Regenerates `.todos.md` at the project root
 3. Updates the `CLAUDE.md` pointer with open TODO counts

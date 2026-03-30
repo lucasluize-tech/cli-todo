@@ -19,9 +19,12 @@ config_app = typer.Typer(help="Manage configuration.")
 categories_app = typer.Typer(help="Manage categories.")
 defaults_app = typer.Typer(help="Manage defaults.")
 
+roots_app = typer.Typer(help="Manage project roots.")
+
 app.add_typer(config_app, name="config")
 config_app.add_typer(categories_app, name="categories")
 config_app.add_typer(defaults_app, name="defaults")
+config_app.add_typer(roots_app, name="roots")
 
 err_console = Console(stderr=True)
 
@@ -420,3 +423,42 @@ def defaults_set(
         raise typer.Exit(1) from None
     console = Console()
     console.print(f"[green]Set default {key} = {value}[/green]")
+
+
+@roots_app.command("list")
+def roots_list() -> None:
+    """List configured project roots."""
+    mgr = _get_config_manager()
+    console = Console()
+    roots = mgr.list_projects_roots()
+    if not roots:
+        console.print("  No project roots configured.")
+        return
+    for root in roots:
+        console.print(f"  - {root}")
+
+
+@roots_app.command("add")
+def roots_add(path: str = typer.Argument(..., help="Path to project root directory")) -> None:
+    """Add a project root directory."""
+    mgr = _get_config_manager()
+    try:
+        mgr.add_projects_root(path)
+    except ValueError as e:
+        err_console.print(f"Error: {e}")
+        raise typer.Exit(1) from None
+    console = Console()
+    console.print(f"[green]Added project root '{path}'[/green]")
+
+
+@roots_app.command("remove")
+def roots_remove(path: str = typer.Argument(..., help="Path to project root directory")) -> None:
+    """Remove a project root directory."""
+    mgr = _get_config_manager()
+    try:
+        mgr.remove_projects_root(path)
+    except ValueError as e:
+        err_console.print(f"Error: {e}")
+        raise typer.Exit(1) from None
+    console = Console()
+    console.print(f"[green]Removed project root '{path}'[/green]")
