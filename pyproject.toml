@@ -1,0 +1,49 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "todo-cli-tool"
+version = "0.1.0"
+description = "A CLI tool for managing personal TODOs across life categories and project directories"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [
+    { name = "Lucas Luize" },
+]
+dependencies = [
+    "typer>=0.15",
+    "rich>=13.0",
+    "pyyaml>=6.0",
+    "pydantic>=2.0",
+]
+
+[project.scripts]
+todo = "todo.cli:app"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=todo --cov-report=term-missing"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+packages = ["todo"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/todo"]
+
+[tool.coverage.run]
+source = ["todo"]
+
+[tool.coverage.report]
+fail_under = 80
