@@ -77,6 +77,16 @@ source .venv/bin/activate
 uv pip install -e .
 ```
 
+### Add `todo` to your PATH
+
+Symlink the binary so it's available globally, without needing to activate the venv:
+
+```shell
+ln -sf "$(pwd)/.venv/bin/todo" ~/.local/bin/todo
+```
+
+Make sure `~/.local/bin` is in your `PATH`. Then you can run `todo` from anywhere.
+
 ### Verify the installation
 
 ```shell
