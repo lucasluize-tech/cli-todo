@@ -131,25 +131,21 @@ def list_todos(
     """List TODOs with optional filters."""
     store = _get_store()
 
-    kwargs: dict = {}
-    if priority is not None:
-        kwargs["priority"] = Priority(priority)
-    if category is not None:
-        kwargs["category"] = category
-    if status is not None:
-        kwargs["status"] = Status(status)
-    if tag is not None:
-        kwargs["tag"] = tag
+    filter_priority = Priority(priority) if priority is not None else None
+    filter_status = Status(status) if status is not None else None
 
     # Auto-filter to current project unless --all or --project specified
-    if not all_todos and project is None and "project" not in kwargs:
-        auto_proj = _auto_project(None)
-        if auto_proj:
-            kwargs["project"] = auto_proj
-    elif project is not None:
-        kwargs["project"] = project
+    filter_project = project
+    if not all_todos and project is None:
+        filter_project = _auto_project(None)
 
-    todos = store.list_todos(**kwargs)
+    todos = store.list_todos(
+        priority=filter_priority,
+        category=category,
+        status=filter_status,
+        project=filter_project,
+        tag=tag,
+    )
     render_todo_table(todos)
 
 
@@ -185,7 +181,7 @@ def edit(
         err_console.print(f"Error: No TODO found with ID '{todo_id}'")
         raise typer.Exit(1)
 
-    kwargs: dict = {}
+    kwargs: dict[str, str | Priority | Status | list[str]] = {}
     if title is not None:
         kwargs["title"] = title
     if priority is not None:
