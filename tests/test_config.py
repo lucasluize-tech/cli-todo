@@ -66,3 +66,31 @@ class TestConfigManager:
         cats = mgr.list_categories()
         assert isinstance(cats, list)
         assert "Work" in cats
+
+    def test_list_projects_roots(self, mock_home: Path):
+        mgr = ConfigManager(mock_home / ".todo")
+        roots = mgr.list_projects_roots()
+        assert isinstance(roots, list)
+        assert "~/projects" in roots
+
+    def test_add_projects_root(self, mock_home: Path):
+        mgr = ConfigManager(mock_home / ".todo")
+        mgr.add_projects_root("~/code")
+        roots = mgr.list_projects_roots()
+        assert "~/code" in roots
+
+    def test_add_duplicate_projects_root_raises(self, mock_home: Path):
+        mgr = ConfigManager(mock_home / ".todo")
+        with pytest.raises(ValueError, match="already configured"):
+            mgr.add_projects_root("~/projects")
+
+    def test_remove_projects_root(self, mock_home: Path):
+        mgr = ConfigManager(mock_home / ".todo")
+        mgr.remove_projects_root("~/work")
+        roots = mgr.list_projects_roots()
+        assert "~/work" not in roots
+
+    def test_remove_nonexistent_projects_root_raises(self, mock_home: Path):
+        mgr = ConfigManager(mock_home / ".todo")
+        with pytest.raises(ValueError, match="not found"):
+            mgr.remove_projects_root("~/nonexistent")

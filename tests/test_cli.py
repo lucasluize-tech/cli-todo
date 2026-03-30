@@ -292,6 +292,29 @@ class TestConfigCommands:
         result = runner.invoke(app, ["config", "defaults", "set", "invalid", "value"])
         assert result.exit_code == 1
 
+    def test_roots_list(self, mock_home: Path):
+        result = runner.invoke(app, ["config", "roots", "list"])
+        assert result.exit_code == 0
+        assert "~/projects" in result.output
+
+    def test_roots_add(self, mock_home: Path):
+        result = runner.invoke(app, ["config", "roots", "add", "~/code"])
+        assert result.exit_code == 0
+        assert "Added project root" in result.output
+
+    def test_roots_add_duplicate(self, mock_home: Path):
+        result = runner.invoke(app, ["config", "roots", "add", "~/projects"])
+        assert result.exit_code == 1
+
+    def test_roots_remove(self, mock_home: Path):
+        result = runner.invoke(app, ["config", "roots", "remove", "~/work"])
+        assert result.exit_code == 0
+        assert "Removed project root" in result.output
+
+    def test_roots_remove_nonexistent(self, mock_home: Path):
+        result = runner.invoke(app, ["config", "roots", "remove", "~/nonexistent"])
+        assert result.exit_code == 1
+
 
 def _extract_id(output: str, title: str) -> str | None:
     """Extract TODO ID from list output by finding the line with the title."""
