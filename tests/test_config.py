@@ -94,3 +94,48 @@ class TestConfigManager:
         mgr = ConfigManager(mock_home / ".todo")
         with pytest.raises(ValueError, match="not found"):
             mgr.remove_projects_root("~/nonexistent")
+
+    def test_set_default_llm(self, mock_home: Path):
+        mgr = ConfigManager(mock_home / ".todo")
+        mgr.set_default("llm", "codex")
+        config = mgr.load()
+        assert config.defaults.llm == "codex"
+
+    def test_set_default_llm_invalid(self, mock_home: Path):
+        mgr = ConfigManager(mock_home / ".todo")
+        with pytest.raises(ValueError, match="Unsupported LLM"):
+            mgr.set_default("llm", "invalid-llm")
+
+    def test_set_default_llm_files(self, mock_home: Path):
+        mgr = ConfigManager(mock_home / ".todo")
+        mgr.set_default("llm_files", "claude,agents")
+        config = mgr.load()
+        assert config.defaults.llm_files == ["claude", "agents"]
+
+    def test_set_default_llm_files_single(self, mock_home: Path):
+        mgr = ConfigManager(mock_home / ".todo")
+        mgr.set_default("llm_files", "claude")
+        config = mgr.load()
+        assert config.defaults.llm_files == ["claude"]
+
+    def test_set_default_llm_files_invalid_entry(self, mock_home: Path):
+        mgr = ConfigManager(mock_home / ".todo")
+        with pytest.raises(ValueError, match="Unsupported llm_files"):
+            mgr.set_default("llm_files", "claude,invalid")
+
+    def test_set_default_llm_files_local_true(self, mock_home: Path):
+        mgr = ConfigManager(mock_home / ".todo")
+        mgr.set_default("llm_files_local", "true")
+        config = mgr.load()
+        assert config.defaults.llm_files_local is True
+
+    def test_set_default_llm_files_local_false(self, mock_home: Path):
+        mgr = ConfigManager(mock_home / ".todo")
+        mgr.set_default("llm_files_local", "false")
+        config = mgr.load()
+        assert config.defaults.llm_files_local is False
+
+    def test_set_default_llm_files_local_invalid(self, mock_home: Path):
+        mgr = ConfigManager(mock_home / ".todo")
+        with pytest.raises(ValueError, match="must be 'true' or 'false'"):
+            mgr.set_default("llm_files_local", "maybe")

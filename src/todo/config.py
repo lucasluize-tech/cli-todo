@@ -9,6 +9,9 @@ import yaml
 
 from todo.models import Priority, TodoConfig
 
+SUPPORTED_LLMS = frozenset({"claude", "codex", "gemini", "opencode"})
+SUPPORTED_LLM_FILES = frozenset({"claude", "agents"})
+
 
 class ConfigManager:
     """Manages user configuration (categories, defaults)."""
@@ -55,8 +58,32 @@ class ConfigManager:
             config.defaults.category = str(value)
         elif key == "priority":
             config.defaults.priority = Priority(int(value))
+        elif key == "llm":
+            val = str(value)
+            if val not in SUPPORTED_LLMS:
+                raise ValueError(
+                    f"Unsupported LLM: '{val}'. Choose from: {', '.join(sorted(SUPPORTED_LLMS))}"
+                )
+            config.defaults.llm = val
+        elif key == "llm_files":
+            entries = [e.strip() for e in str(value).split(",")]
+            invalid = [e for e in entries if e not in SUPPORTED_LLM_FILES]
+            if invalid:
+                raise ValueError(
+                    f"Unsupported llm_files: {', '.join(invalid)}. "
+                    f"Choose from: {', '.join(sorted(SUPPORTED_LLM_FILES))}"
+                )
+            config.defaults.llm_files = entries
+        elif key == "llm_files_local":
+            val = str(value).lower()
+            if val not in ("true", "false"):
+                raise ValueError("llm_files_local must be 'true' or 'false'")
+            config.defaults.llm_files_local = val == "true"
         else:
-            raise ValueError(f"Invalid default key: '{key}'. Use 'category' or 'priority'")
+            raise ValueError(
+                f"Invalid default key: '{key}'. "
+                "Use 'category', 'priority', 'llm', 'llm_files', or 'llm_files_local'"
+            )
         self._save(config)
 
     def list_projects_roots(self) -> list[str]:
