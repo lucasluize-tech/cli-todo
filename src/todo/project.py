@@ -76,10 +76,21 @@ def generate_todos_md(project_name: str, todos: list[Todo]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def generate_claude_md_section(
-    claude_md_path: Path, *, open_count: int, critical_count: int
+_FILE_NAMES: dict[str, dict[bool, str]] = {
+    "claude": {True: "claude.local.md", False: "CLAUDE.md"},
+    "agents": {True: "AGENTS.local.md", False: "AGENTS.md"},
+}
+
+
+def generate_llm_file_sections(
+    project_root: Path,
+    *,
+    open_count: int,
+    critical_count: int,
+    llm_files: list[str],
+    llm_files_local: bool,
 ) -> None:
-    """Inject or update TODO section in CLAUDE.md."""
+    """Inject or update TODO section in configured LLM files."""
     section_lines = [
         BEGIN_SENTINEL,
         "## Project TODOs",
@@ -91,21 +102,27 @@ def generate_claude_md_section(
     ]
     section = "\n".join(section_lines) + "\n"
 
-    if not claude_md_path.exists():
-        claude_md_path.write_text(section)
-        return
-
-    content = claude_md_path.read_text()
-
     pattern = re.compile(
         rf"{re.escape(BEGIN_SENTINEL)}.*?{re.escape(END_SENTINEL)}\n?",
         re.DOTALL,
     )
-    if pattern.search(content):
-        content = pattern.sub(section, content)
-    else:
-        if not content.endswith("\n"):
-            content += "\n"
-        content += "\n" + section
 
-    claude_md_path.write_text(content)
+    for file_key in llm_files:
+        names = _FILE_NAMES.get(file_key)
+        if names is None:
+            continue
+        target = project_root / names[llm_files_local]
+
+        if not target.exists():
+            target.write_text(section)
+            continue
+
+        content = target.read_text()
+        if pattern.search(content):
+            content = pattern.sub(section, content)
+        else:
+            if not content.endswith("\n"):
+                content += "\n"
+            content += "\n" + section
+
+        target.write_text(content)

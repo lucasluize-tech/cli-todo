@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from todo.models import Priority, Status, Todo
-from todo.project import detect_project, generate_claude_md_section, generate_todos_md
+from todo.project import detect_project, generate_llm_file_sections, generate_todos_md
 
 
 class TestDetectProject:
@@ -93,40 +93,94 @@ class TestGenerateTodosMd:
         assert "No open TODOs" in md
 
 
-class TestGenerateClaudeMdSection:
-    def test_new_file(self, tmp_path: Path):
-        claude_md = tmp_path / "CLAUDE.md"
-        generate_claude_md_section(claude_md, open_count=3, critical_count=1)
-        content = claude_md.read_text()
+class TestGenerateLlmFileSections:
+    def test_writes_claude_local_by_default(self, tmp_path: Path):
+        generate_llm_file_sections(
+            tmp_path, open_count=3, critical_count=1,
+            llm_files=["claude"], llm_files_local=True,
+        )
+        content = (tmp_path / "claude.local.md").read_text()
         assert "<!-- BEGIN TODO CLI -->" in content
-        assert "<!-- END TODO CLI -->" in content
         assert "3 open" in content
         assert "1 critical" in content
 
-    def test_update_existing_section(self, tmp_path: Path):
-        claude_md = tmp_path / "CLAUDE.md"
-        claude_md.write_text(
+    def test_writes_agents_local_by_default(self, tmp_path: Path):
+        generate_llm_file_sections(
+            tmp_path, open_count=2, critical_count=0,
+            llm_files=["agents"], llm_files_local=True,
+        )
+        content = (tmp_path / "AGENTS.local.md").read_text()
+        assert "<!-- BEGIN TODO CLI -->" in content
+        assert "2 open" in content
+
+    def test_writes_both_files(self, tmp_path: Path):
+        generate_llm_file_sections(
+            tmp_path, open_count=5, critical_count=2,
+            llm_files=["claude", "agents"], llm_files_local=True,
+        )
+        assert (tmp_path / "claude.local.md").exists()
+        assert (tmp_path / "AGENTS.local.md").exists()
+        for name in ["claude.local.md", "AGENTS.local.md"]:
+            content = (tmp_path / name).read_text()
+            assert "5 open" in content
+            assert "2 critical" in content
+
+    def test_writes_shared_files_when_not_local(self, tmp_path: Path):
+        generate_llm_file_sections(
+            tmp_path, open_count=1, critical_count=0,
+            llm_files=["claude", "agents"], llm_files_local=False,
+        )
+        assert (tmp_path / "CLAUDE.md").exists()
+        assert (tmp_path / "AGENTS.md").exists()
+
+    def test_creates_file_if_not_exists(self, tmp_path: Path):
+        assert not (tmp_path / "claude.local.md").exists()
+        generate_llm_file_sections(
+            tmp_path, open_count=1, critical_count=0,
+            llm_files=["claude"], llm_files_local=True,
+        )
+        assert (tmp_path / "claude.local.md").exists()
+
+    def test_updates_existing_section(self, tmp_path: Path):
+        target = tmp_path / "claude.local.md"
+        target.write_text(
             "# My Project\n\nSome content.\n\n"
             "<!-- BEGIN TODO CLI -->\nOld content\n<!-- END TODO CLI -->\n\nMore content.\n"
         )
-        generate_claude_md_section(claude_md, open_count=5, critical_count=0)
-        content = claude_md.read_text()
+        generate_llm_file_sections(
+            tmp_path, open_count=5, critical_count=0,
+            llm_files=["claude"], llm_files_local=True,
+        )
+        content = target.read_text()
         assert "5 open" in content
         assert "Old content" not in content
         assert "Some content." in content
         assert "More content." in content
 
-    def test_append_to_existing_file(self, tmp_path: Path):
-        claude_md = tmp_path / "CLAUDE.md"
-        claude_md.write_text("# My Project\n\nExisting stuff.\n")
-        generate_claude_md_section(claude_md, open_count=2, critical_count=2)
-        content = claude_md.read_text()
+    def test_appends_to_existing_file_without_section(self, tmp_path: Path):
+        target = tmp_path / "claude.local.md"
+        target.write_text("# My Project\n\nExisting stuff.\n")
+        generate_llm_file_sections(
+            tmp_path, open_count=2, critical_count=2,
+            llm_files=["claude"], llm_files_local=True,
+        )
+        content = target.read_text()
         assert "Existing stuff." in content
         assert "<!-- BEGIN TODO CLI -->" in content
         assert "2 open" in content
 
     def test_zero_todos(self, tmp_path: Path):
-        claude_md = tmp_path / "CLAUDE.md"
-        generate_claude_md_section(claude_md, open_count=0, critical_count=0)
-        content = claude_md.read_text()
+        generate_llm_file_sections(
+            tmp_path, open_count=0, critical_count=0,
+            llm_files=["claude"], llm_files_local=True,
+        )
+        content = (tmp_path / "claude.local.md").read_text()
         assert "0 open" in content
+
+    def test_empty_llm_files_writes_nothing(self, tmp_path: Path):
+        generate_llm_file_sections(
+            tmp_path, open_count=3, critical_count=0,
+            llm_files=[], llm_files_local=True,
+        )
+        assert not (tmp_path / "claude.local.md").exists()
+        assert not (tmp_path / "AGENTS.local.md").exists()
