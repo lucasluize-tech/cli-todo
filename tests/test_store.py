@@ -215,6 +215,85 @@ class TestStoreCorruptFile:
         assert len(store.list_todos()) == 0
 
 
+class TestUpdateAllowlist:
+    """Issue #1 (Critical): update() must reject unknown fields."""
+
+    def test_update_rejects_unknown_field(self, mock_home: Path):
+        store = TodoStore(mock_home / ".todo")
+        todo = Todo(id="abc123", title="Test", category="Work")
+        store.add(todo)
+        with pytest.raises(ValueError, match="Cannot update field"):
+            store.update("abc123", __class__="hacked")
+
+    def test_update_rejects_id_change(self, mock_home: Path):
+        store = TodoStore(mock_home / ".todo")
+        todo = Todo(id="abc123", title="Test", category="Work")
+        store.add(todo)
+        with pytest.raises(ValueError, match="Cannot update field"):
+            store.update("abc123", id="evil99")
+
+    def test_update_rejects_created_at_change(self, mock_home: Path):
+        store = TodoStore(mock_home / ".todo")
+        todo = Todo(id="abc123", title="Test", category="Work")
+        store.add(todo)
+        with pytest.raises(ValueError, match="Cannot update field"):
+            store.update("abc123", created_at="2020-01-01")
+
+    def test_update_allows_valid_fields(self, mock_home: Path):
+        store = TodoStore(mock_home / ".todo")
+        todo = Todo(id="abc123", title="Old", category="Work")
+        store.add(todo)
+        updated = store.update(
+            "abc123", title="New", description="desc", category="Family",
+            project="proj", tags=["a"], due_date="2026-12-01",
+        )
+        assert updated.title == "New"
+        assert updated.description == "desc"
+        assert updated.tags == ["a"]
+
+
+class TestDirectoryPermissions:
+    """Issue #3: Data directory should not be world-readable."""
+
+    def test_base_dir_created_with_restricted_permissions(self, tmp_path: Path):
+        todo_dir = tmp_path / "new_todo_dir"
+        TodoStore(todo_dir)
+        mode = todo_dir.stat().st_mode & 0o777
+        assert mode == 0o700
+
+    def test_config_dir_created_with_restricted_permissions(self, tmp_path: Path):
+        from todo.config import ConfigManager
+
+        config_dir = tmp_path / "new_config_dir"
+        ConfigManager(config_dir)
+        mode = config_dir.stat().st_mode & 0o777
+        assert mode == 0o700
+
+
+class TestSymlinkProtection:
+    """Issue #5: Refuse to write through symlinks."""
+
+    def test_save_refuses_symlinked_todos_file(self, mock_home: Path):
+        store = TodoStore(mock_home / ".todo")
+        # Replace todos.yml with a symlink
+        store.todos_path.unlink()
+        target = mock_home / "evil_target.txt"
+        target.write_text("original")
+        store.todos_path.symlink_to(target)
+        with pytest.raises(OSError, match="symlink"):
+            store.add(Todo(title="Test", category="Work"))
+
+    def test_save_refuses_symlinked_config_file(self, mock_home: Path):
+        store = TodoStore(mock_home / ".todo")
+        store.config_path.unlink()
+        target = mock_home / "evil_config.txt"
+        target.write_text("original")
+        store.config_path.symlink_to(target)
+        from todo.models import TodoConfig
+        with pytest.raises(OSError, match="symlink"):
+            store._write_config(TodoConfig())
+
+
 class TestFileLocking:
     def test_lock_created_during_write(self, mock_home: Path):
         store = TodoStore(mock_home / ".todo")

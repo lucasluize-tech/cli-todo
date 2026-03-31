@@ -15,7 +15,7 @@ class ConfigManager:
 
     def __init__(self, base_dir: Path | None = None) -> None:
         self.base_dir = base_dir or Path.home() / ".todo"
-        self.base_dir.mkdir(parents=True, exist_ok=True)
+        self.base_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.config_path = self.base_dir / "config.yml"
 
         if not self.config_path.exists():

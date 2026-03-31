@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import fcntl
 import os
-import time
 from datetime import UTC, datetime
+from io import TextIOWrapper
 from pathlib import Path
 from typing import Any
 
@@ -18,12 +19,13 @@ class TodoStore:
 
     def __init__(self, base_dir: Path | None = None) -> None:
         self.base_dir = base_dir or Path.home() / ".todo"
-        self.base_dir.mkdir(parents=True, exist_ok=True)
+        self.base_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.todos_path = self.base_dir / "todos.yml"
         self.config_path = self.base_dir / "config.yml"
         self.lock_path = self.base_dir / ".lock"
 
         self._todos: list[Todo] = []
+        self._lock_fd: TextIOWrapper | None = None
         self._load()
 
         if not self.config_path.exists():
@@ -55,33 +57,34 @@ class TodoStore:
     def _save(self) -> None:
         self._acquire_lock()
         try:
+            _refuse_symlink(self.todos_path)
             data = {"todos": [t.model_dump(mode="json") for t in self._todos]}
             self.todos_path.write_text(yaml.dump(data, default_flow_style=False))
         finally:
             self._release_lock()
 
     def _acquire_lock(self) -> None:
-        if self.lock_path.exists():
-            lock_age = time.time() - self.lock_path.stat().st_mtime
-            try:
-                pid = int(self.lock_path.read_text().strip())
-                pid_alive = _pid_exists(pid)
-            except (ValueError, OSError):
-                pid_alive = False
-
-            if lock_age > 60 or not pid_alive:
-                self.lock_path.unlink(missing_ok=True)
-            else:
-                raise OSError(
-                    f"Could not acquire lock. Another todo process may be running (PID: {pid})"
-                )
-
-        self.lock_path.write_text(str(os.getpid()))
+        self._lock_fd = open(self.lock_path, "w")  # noqa: SIM115
+        try:
+            fcntl.flock(self._lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            self._lock_fd.close()
+            self._lock_fd = None
+            raise OSError(
+                "Could not acquire lock. Another todo process may be running."
+            ) from None
+        self._lock_fd.write(str(os.getpid()))
+        self._lock_fd.flush()
 
     def _release_lock(self) -> None:
-        self.lock_path.unlink(missing_ok=True)
+        if self._lock_fd is not None:
+            fcntl.flock(self._lock_fd, fcntl.LOCK_UN)
+            self._lock_fd.close()
+            self._lock_fd = None
+            self.lock_path.unlink(missing_ok=True)
 
     def _write_config(self, config: TodoConfig) -> None:
+        _refuse_symlink(self.config_path)
         data = config.model_dump(mode="json")
         self.config_path.write_text(yaml.dump(data, default_flow_style=False))
 
@@ -107,6 +110,11 @@ class TodoStore:
                 return t
         return None
 
+    _MUTABLE_FIELDS = frozenset({
+        "title", "description", "priority", "category", "project",
+        "status", "tags", "due_date", "completed_at", "updated_at",
+    })
+
     def update(self, todo_id: str, **kwargs: Any) -> Todo:
         todo = self.get(todo_id)
         if todo is None:
@@ -121,6 +129,8 @@ class TodoStore:
         kwargs["updated_at"] = datetime.now(UTC)
 
         for key, value in kwargs.items():
+            if key not in self._MUTABLE_FIELDS:
+                raise ValueError(f"Cannot update field: {key}")
             setattr(todo, key, value)
 
         self._save()
@@ -162,9 +172,7 @@ class TodoStore:
         return results
 
 
-def _pid_exists(pid: int) -> bool:
-    try:
-        os.kill(pid, 0)
-        return True
-    except OSError:
-        return False
+def _refuse_symlink(path: Path) -> None:
+    """Refuse to write through a symlink to prevent symlink attacks."""
+    if path.is_symlink():
+        raise OSError(f"Refusing to write through symlink: {path}")

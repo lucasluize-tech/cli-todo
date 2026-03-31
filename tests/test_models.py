@@ -108,6 +108,38 @@ class TestTodo:
         with pytest.raises(ValueError):
             Todo(title="", category="Work")
 
+    def test_valid_due_date_accepted(self):
+        todo = Todo(title="Test", category="Work", due_date="2026-04-01")
+        assert todo.due_date == "2026-04-01"
+
+    def test_invalid_due_date_rejected(self):
+        with pytest.raises(ValueError):
+            Todo(title="Test", category="Work", due_date="not-a-date")
+
+    def test_invalid_due_date_partial_rejected(self):
+        with pytest.raises(ValueError):
+            Todo(title="Test", category="Work", due_date="2026-13-01")
+
+    def test_none_due_date_accepted(self):
+        todo = Todo(title="Test", category="Work", due_date=None)
+        assert todo.due_date is None
+
+    def test_valid_project_name_accepted(self):
+        todo = Todo(title="Test", category="Work", project="my-project_v2")
+        assert todo.project == "my-project_v2"
+
+    def test_project_name_rejects_path_traversal(self):
+        with pytest.raises(ValueError):
+            Todo(title="Test", category="Work", project="../../etc")
+
+    def test_project_name_rejects_slashes(self):
+        with pytest.raises(ValueError):
+            Todo(title="Test", category="Work", project="foo/bar")
+
+    def test_none_project_accepted(self):
+        todo = Todo(title="Test", category="Work", project=None)
+        assert todo.project is None
+
     def test_priority_int_coerced_to_enum(self):
         todo = Todo(title="Test", category="Work", priority=1)
         assert todo.priority == Priority.CRITICAL

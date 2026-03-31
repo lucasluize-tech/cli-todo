@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import re
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from enum import IntEnum, StrEnum
 
 from pydantic import BaseModel, Field, field_validator
@@ -61,6 +62,23 @@ class Todo(BaseModel):
     def title_must_not_be_empty(cls, v: str) -> str:
         if not v.strip():
             raise ValueError("Title must not be empty")
+        return v
+
+    @field_validator("due_date")
+    @classmethod
+    def validate_due_date(cls, v: str | None) -> str | None:
+        if v is not None:
+            date.fromisoformat(v)
+        return v
+
+    @field_validator("project")
+    @classmethod
+    def validate_project_name(cls, v: str | None) -> str | None:
+        if v is not None and not re.match(r"^[a-zA-Z0-9_\-\.]+$", v):
+            raise ValueError(
+                f"Invalid project name: '{v}'. "
+                "Use only letters, numbers, hyphens, underscores, and dots."
+            )
         return v
 
     @field_validator("priority", mode="before")
