@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from todo.models import Priority, Status, Todo, TodoConfig
+from todo.models import ConfigDefaults, Priority, Status, Todo, TodoConfig
 
 
 class TestPriority:
@@ -152,6 +152,32 @@ class TestTodo:
         restored = Todo(**d)
         assert restored.id == todo.id
         assert restored.title == todo.title
+
+
+class TestConfigDefaults:
+    def test_default_llm(self):
+        config = ConfigDefaults()
+        assert config.llm == "claude"
+
+    def test_default_llm_files(self):
+        config = ConfigDefaults()
+        assert config.llm_files == ["claude", "agents"]
+
+    def test_default_llm_files_local(self):
+        config = ConfigDefaults()
+        assert config.llm_files_local is True
+
+    def test_custom_llm(self):
+        config = ConfigDefaults(llm="codex")
+        assert config.llm == "codex"
+
+    def test_custom_llm_files(self):
+        config = ConfigDefaults(llm_files=["claude"])
+        assert config.llm_files == ["claude"]
+
+    def test_custom_llm_files_local_false(self):
+        config = ConfigDefaults(llm_files_local=False)
+        assert config.llm_files_local is False
 
 
 class TestTodoConfig:

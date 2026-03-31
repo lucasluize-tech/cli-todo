@@ -91,6 +91,9 @@ class ConfigDefaults(BaseModel):
     category: str = "Work"
     priority: Priority = Priority.MEDIUM
     projects_roots: list[str] = Field(default_factory=lambda: ["~/projects", "~/work"])
+    llm: str = "claude"
+    llm_files: list[str] = Field(default_factory=lambda: ["claude", "agents"])
+    llm_files_local: bool = True
 
 
 class TodoConfig(BaseModel):
