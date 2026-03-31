@@ -244,8 +244,13 @@ class TestUpdateAllowlist:
         todo = Todo(id="abc123", title="Old", category="Work")
         store.add(todo)
         updated = store.update(
-            "abc123", title="New", description="desc", category="Family",
-            project="proj", tags=["a"], due_date="2026-12-01",
+            "abc123",
+            title="New",
+            description="desc",
+            category="Family",
+            project="proj",
+            tags=["a"],
+            due_date="2026-12-01",
         )
         assert updated.title == "New"
         assert updated.description == "desc"
@@ -290,6 +295,7 @@ class TestSymlinkProtection:
         target.write_text("original")
         store.config_path.symlink_to(target)
         from todo.models import TodoConfig
+
         with pytest.raises(OSError, match="symlink"):
             store._write_config(TodoConfig())
 

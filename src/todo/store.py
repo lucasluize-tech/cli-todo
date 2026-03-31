@@ -70,9 +70,7 @@ class TodoStore:
         except OSError:
             self._lock_fd.close()
             self._lock_fd = None
-            raise OSError(
-                "Could not acquire lock. Another todo process may be running."
-            ) from None
+            raise OSError("Could not acquire lock. Another todo process may be running.") from None
         self._lock_fd.write(str(os.getpid()))
         self._lock_fd.flush()
 
@@ -110,10 +108,20 @@ class TodoStore:
                 return t
         return None
 
-    _MUTABLE_FIELDS = frozenset({
-        "title", "description", "priority", "category", "project",
-        "status", "tags", "due_date", "completed_at", "updated_at",
-    })
+    _MUTABLE_FIELDS = frozenset(
+        {
+            "title",
+            "description",
+            "priority",
+            "category",
+            "project",
+            "status",
+            "tags",
+            "due_date",
+            "completed_at",
+            "updated_at",
+        }
+    )
 
     def update(self, todo_id: str, **kwargs: Any) -> Todo:
         todo = self.get(todo_id)
