@@ -24,6 +24,7 @@ Manage TODOs from the terminal with priorities, life categories, and automatic p
 - **Cross-LLM Integration:** Auto-generates `.todos.md` and updates `claude.local.md` / `AGENTS.local.md` so your AI assistant (Claude, Codex, Gemini, OpenCode) always knows your TODOs.
 - **LLM Quick Start:** Run `todo start <id>` to mark a TODO as in-progress and launch your preferred LLM with the TODO as the prompt.
 - **Beautiful Output:** Rich-powered tables and detail panels with overdue highlighting.
+- **Self-Update:** Check for new versions and upgrade in-place with `todo update`.
 - **Single YAML Store:** All TODOs in one file (`~/.todo/todos.yml`) — easy to backup, sync, or inspect.
 
 ## Demo
@@ -133,6 +134,15 @@ todo archive --all-done
 
 # Delete a TODO (with confirmation)
 todo delete a3f7b2
+
+# Check version
+todo --version
+
+# Check for updates and upgrade
+todo update
+
+# Force reinstall
+todo update --force
 ```
 
 ### Configuration
