@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import shutil
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 from rich.console import Console
@@ -39,9 +39,7 @@ LLM_INSTALL_URLS: dict[str, str] = {
 }
 
 
-def _build_llm_command(
-    llm: str, prompt: str, todo_id: str, project_root: Path
-) -> list[str]:
+def _build_llm_command(llm: str, prompt: str, todo_id: str, project_root: Path) -> list[str]:
     """Build the command list for the given LLM."""
     if llm == "claude":
         return ["claude", prompt, "-n", f"todo:{todo_id}"]
@@ -269,7 +267,10 @@ def done(
 @app.command()
 def start(
     todo_id: str = typer.Argument(..., help="TODO ID"),
-    llm: Annotated[Optional[str], typer.Argument(help="LLM to launch (claude, codex, gemini, opencode)")] = None,
+    llm: Annotated[
+        str | None,
+        typer.Argument(help="LLM to launch (claude, codex, gemini, opencode)"),
+    ] = None,
 ) -> None:
     """Mark a TODO as in_progress and optionally launch an LLM session."""
     store = _get_store()
@@ -321,9 +322,7 @@ def start(
             break
 
     if project_root is None:
-        err_console.print(
-            f"Error: Could not find project root for '{updated.project}'"
-        )
+        err_console.print(f"Error: Could not find project root for '{updated.project}'")
         raise typer.Exit(1)
 
     # Build prompt

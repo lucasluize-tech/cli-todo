@@ -96,8 +96,11 @@ class TestGenerateTodosMd:
 class TestGenerateLlmFileSections:
     def test_writes_claude_local_by_default(self, tmp_path: Path):
         generate_llm_file_sections(
-            tmp_path, open_count=3, critical_count=1,
-            llm_files=["claude"], llm_files_local=True,
+            tmp_path,
+            open_count=3,
+            critical_count=1,
+            llm_files=["claude"],
+            llm_files_local=True,
         )
         content = (tmp_path / "claude.local.md").read_text()
         assert "<!-- BEGIN TODO CLI -->" in content
@@ -106,8 +109,11 @@ class TestGenerateLlmFileSections:
 
     def test_writes_agents_local_by_default(self, tmp_path: Path):
         generate_llm_file_sections(
-            tmp_path, open_count=2, critical_count=0,
-            llm_files=["agents"], llm_files_local=True,
+            tmp_path,
+            open_count=2,
+            critical_count=0,
+            llm_files=["agents"],
+            llm_files_local=True,
         )
         content = (tmp_path / "AGENTS.local.md").read_text()
         assert "<!-- BEGIN TODO CLI -->" in content
@@ -115,8 +121,11 @@ class TestGenerateLlmFileSections:
 
     def test_writes_both_files(self, tmp_path: Path):
         generate_llm_file_sections(
-            tmp_path, open_count=5, critical_count=2,
-            llm_files=["claude", "agents"], llm_files_local=True,
+            tmp_path,
+            open_count=5,
+            critical_count=2,
+            llm_files=["claude", "agents"],
+            llm_files_local=True,
         )
         assert (tmp_path / "claude.local.md").exists()
         assert (tmp_path / "AGENTS.local.md").exists()
@@ -127,8 +136,11 @@ class TestGenerateLlmFileSections:
 
     def test_writes_shared_files_when_not_local(self, tmp_path: Path):
         generate_llm_file_sections(
-            tmp_path, open_count=1, critical_count=0,
-            llm_files=["claude", "agents"], llm_files_local=False,
+            tmp_path,
+            open_count=1,
+            critical_count=0,
+            llm_files=["claude", "agents"],
+            llm_files_local=False,
         )
         assert (tmp_path / "CLAUDE.md").exists()
         assert (tmp_path / "AGENTS.md").exists()
@@ -136,8 +148,11 @@ class TestGenerateLlmFileSections:
     def test_creates_file_if_not_exists(self, tmp_path: Path):
         assert not (tmp_path / "claude.local.md").exists()
         generate_llm_file_sections(
-            tmp_path, open_count=1, critical_count=0,
-            llm_files=["claude"], llm_files_local=True,
+            tmp_path,
+            open_count=1,
+            critical_count=0,
+            llm_files=["claude"],
+            llm_files_local=True,
         )
         assert (tmp_path / "claude.local.md").exists()
 
@@ -148,8 +163,11 @@ class TestGenerateLlmFileSections:
             "<!-- BEGIN TODO CLI -->\nOld content\n<!-- END TODO CLI -->\n\nMore content.\n"
         )
         generate_llm_file_sections(
-            tmp_path, open_count=5, critical_count=0,
-            llm_files=["claude"], llm_files_local=True,
+            tmp_path,
+            open_count=5,
+            critical_count=0,
+            llm_files=["claude"],
+            llm_files_local=True,
         )
         content = target.read_text()
         assert "5 open" in content
@@ -161,8 +179,11 @@ class TestGenerateLlmFileSections:
         target = tmp_path / "claude.local.md"
         target.write_text("# My Project\n\nExisting stuff.\n")
         generate_llm_file_sections(
-            tmp_path, open_count=2, critical_count=2,
-            llm_files=["claude"], llm_files_local=True,
+            tmp_path,
+            open_count=2,
+            critical_count=2,
+            llm_files=["claude"],
+            llm_files_local=True,
         )
         content = target.read_text()
         assert "Existing stuff." in content
@@ -171,16 +192,22 @@ class TestGenerateLlmFileSections:
 
     def test_zero_todos(self, tmp_path: Path):
         generate_llm_file_sections(
-            tmp_path, open_count=0, critical_count=0,
-            llm_files=["claude"], llm_files_local=True,
+            tmp_path,
+            open_count=0,
+            critical_count=0,
+            llm_files=["claude"],
+            llm_files_local=True,
         )
         content = (tmp_path / "claude.local.md").read_text()
         assert "0 open" in content
 
     def test_empty_llm_files_writes_nothing(self, tmp_path: Path):
         generate_llm_file_sections(
-            tmp_path, open_count=3, critical_count=0,
-            llm_files=[], llm_files_local=True,
+            tmp_path,
+            open_count=3,
+            critical_count=0,
+            llm_files=[],
+            llm_files_local=True,
         )
         assert not (tmp_path / "claude.local.md").exists()
         assert not (tmp_path / "AGENTS.local.md").exists()
