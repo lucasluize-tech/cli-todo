@@ -316,6 +316,24 @@ class TestConfigCommands:
         assert result.exit_code == 1
 
 
+class TestGenerate:
+    def test_generate_writes_local_files(self, mock_home: Path):
+        # Create project structure
+        proj = mock_home / "projects" / "my-project"
+        proj.mkdir(parents=True)
+
+        # Patch _auto_project to return the project
+        with patch("todo.cli._auto_project", return_value="my-project"):
+            runner.invoke(app, ["add", "Test task"])
+            result = runner.invoke(app, ["generate"])
+            assert result.exit_code == 0
+
+        assert (proj / "claude.local.md").exists()
+        assert (proj / "AGENTS.local.md").exists()
+        content = (proj / "claude.local.md").read_text()
+        assert "1 open" in content
+
+
 def _extract_id(output: str, title: str) -> str | None:
     """Extract TODO ID from list output by finding the line with the title."""
     for line in output.split("\n"):

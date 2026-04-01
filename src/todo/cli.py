@@ -9,7 +9,7 @@ from rich.console import Console
 
 from todo.config import ConfigManager
 from todo.models import Priority, Status, Todo
-from todo.project import detect_project, generate_claude_md_section, generate_todos_md
+from todo.project import detect_project, generate_llm_file_sections, generate_todos_md
 from todo.renderer import render_todo_detail, render_todo_table
 from todo.store import TodoStore
 from todo.sync import sync as sync_stub
@@ -45,7 +45,7 @@ def _auto_project(project: str | None) -> str | None:
 
 
 def _auto_generate(project: str | None) -> None:
-    """Auto-regenerate .todos.md and CLAUDE.md for the given project."""
+    """Auto-regenerate .todos.md and LLM files for the given project."""
     if project is None:
         return
     store = _get_store()
@@ -65,13 +65,15 @@ def _auto_generate(project: str | None) -> None:
     md_content = generate_todos_md(project, all_todos)
     (project_root / ".todos.md").write_text(md_content)
 
-    # Update CLAUDE.md
+    # Update LLM files
     open_todos = [t for t in all_todos if t.status in (Status.TODO, Status.IN_PROGRESS)]
     critical = [t for t in open_todos if t.priority == Priority.CRITICAL]
-    generate_claude_md_section(
-        project_root / "CLAUDE.md",
+    generate_llm_file_sections(
+        project_root,
         open_count=len(open_todos),
         critical_count=len(critical),
+        llm_files=config.defaults.llm_files,
+        llm_files_local=config.defaults.llm_files_local,
     )
 
 
