@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from typer.testing import CliRunner
@@ -555,6 +555,50 @@ class TestVersion:
         result = runner.invoke(app, ["-v"])
         assert result.exit_code == 0
         assert "todo-cli-tool v" in result.output
+
+
+class TestUpdate:
+    @patch("todo.cli.check_latest_version", return_value="0.4.0")
+    @patch("todo.cli.run_pipx_upgrade", return_value=(True, "Upgrade complete!"))
+    def test_update_available_confirm(
+        self, mock_upgrade: MagicMock, mock_check: MagicMock, mock_home: Path
+    ):
+        result = runner.invoke(app, ["update"], input="y\n")
+        assert result.exit_code == 0
+        assert "Update available" in result.output
+        mock_upgrade.assert_called_once_with(force=False)
+
+    @patch("todo.cli.check_latest_version", return_value="0.4.0")
+    def test_update_available_decline(self, mock_check: MagicMock, mock_home: Path):
+        result = runner.invoke(app, ["update"], input="n\n")
+        assert result.exit_code == 0
+        assert "Update available" in result.output
+
+    @patch("todo.cli.check_latest_version")
+    def test_update_already_latest(self, mock_check: MagicMock, mock_home: Path):
+        from todo import __version__
+        mock_check.return_value = __version__
+        result = runner.invoke(app, ["update"])
+        assert result.exit_code == 0
+        assert "Already up to date" in result.output
+
+    @patch("todo.cli.check_latest_version", return_value=None)
+    def test_update_network_error(self, mock_check: MagicMock, mock_home: Path):
+        result = runner.invoke(app, ["update"])
+        assert result.exit_code == 1
+        assert "Could not check" in result.output
+
+    @patch("todo.cli.run_pipx_upgrade", return_value=(True, "Upgrade complete!"))
+    def test_update_force(self, mock_upgrade: MagicMock, mock_home: Path):
+        result = runner.invoke(app, ["update", "--force"])
+        assert result.exit_code == 0
+        mock_upgrade.assert_called_once_with(force=True)
+
+    @patch("todo.cli.run_pipx_upgrade", return_value=(False, "pipx not found -- install manually with: pipx install todo-cli-tool"))
+    def test_update_force_pipx_missing(self, mock_upgrade: MagicMock, mock_home: Path):
+        result = runner.invoke(app, ["update", "--force"])
+        assert result.exit_code == 1
+        assert "pipx not found" in result.output
 
 
 def _extract_id(output: str, title: str) -> str | None:
