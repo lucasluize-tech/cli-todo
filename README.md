@@ -14,14 +14,15 @@
 
 <br/>
 
-Manage TODOs from the terminal with priorities, life categories, and automatic project detection. Integrates with [Claude Code](https://docs.anthropic.com/en/docs/claude-code) via per-project `.todos.md` files and `CLAUDE.md` pointers.
+Manage TODOs from the terminal with priorities, life categories, and automatic project detection. Cross-LLM integration via per-project `.todos.md` files and LLM config file pointers. Launch AI coding sessions directly from your TODO list.
 
 ## Features
 
 - **Life Categories:** Organize TODOs across Work, Family, Health, Hobbies, and custom categories.
 - **Priority System:** Five priority levels (Critical to None) with color-coded Rich output.
 - **Project-Aware:** Auto-detects your project from the working directory — no flags needed.
-- **Claude Code Integration:** Auto-generates `.todos.md` and updates `CLAUDE.md` so your AI assistant always knows your TODOs.
+- **Cross-LLM Integration:** Auto-generates `.todos.md` and updates `claude.local.md` / `AGENTS.local.md` so your AI assistant (Claude, Codex, Gemini, OpenCode) always knows your TODOs.
+- **LLM Quick Start:** Run `todo start <id>` to mark a TODO as in-progress and launch your preferred LLM with the TODO as the prompt.
 - **Beautiful Output:** Rich-powered tables and detail panels with overdue highlighting.
 - **Single YAML Store:** All TODOs in one file (`~/.todo/todos.yml`) — easy to backup, sync, or inspect.
 
@@ -40,6 +41,10 @@ $ todo list
 
 $ todo done a3f7b2
 Marked [a3f7b2] as done
+
+$ todo start a3f7b2 claude
+Started [a3f7b2]
+# Launches: claude "Implement auth middleware" -n "todo:a3f7b2"
 ```
 
 ## Tech Stack
@@ -117,8 +122,9 @@ todo show a3f7b2
 # Edit a TODO
 todo edit a3f7b2 --title "New title" -p 3
 
-# Mark as in-progress or done
-todo start a3f7b2
+# Mark as in-progress and launch an LLM session
+todo start a3f7b2           # uses default LLM (claude)
+todo start a3f7b2 codex     # override with specific LLM
 todo done a3f7b2
 
 # Archive completed TODOs
@@ -168,6 +174,24 @@ todo config defaults set priority 2
 todo config defaults set category "Family"
 ```
 
+#### LLM Integration
+
+Configure which LLM to use and which config files to generate:
+
+```shell
+# Set default LLM for `todo start`
+todo config defaults set llm claude       # claude, codex, gemini, opencode
+
+# Choose which files to generate (comma-separated)
+todo config defaults set llm_files claude,agents
+
+# Use local files (default) or shared files
+todo config defaults set llm_files_local true   # claude.local.md, AGENTS.local.md
+todo config defaults set llm_files_local false  # CLAUDE.md, AGENTS.md
+```
+
+By default, `todo` writes to `claude.local.md` and `AGENTS.local.md` (local-first, not committed to git). Set `llm_files_local` to `false` if you want the shared variants.
+
 ### Project Integration
 
 ```shell
@@ -181,7 +205,7 @@ todo generate -a
 When you run `todo add` or `todo done` from within a configured project root, the tool automatically:
 1. Detects the project from your working directory
 2. Regenerates `.todos.md` at the project root
-3. Updates the `CLAUDE.md` pointer with open TODO counts
+3. Updates LLM config files (`claude.local.md`, `AGENTS.local.md` by default) with open TODO counts
 
 ## Project Structure
 
