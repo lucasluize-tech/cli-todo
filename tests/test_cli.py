@@ -364,6 +364,27 @@ class TestStart:
             assert "Build feature" in prompt
             assert "Some details here" in prompt
 
+    def test_start_rejects_symlinked_project_root(self, mock_home: Path):
+        real_proj = mock_home / "projects" / "real-project"
+        real_proj.mkdir(parents=True)
+
+        symlink_proj = mock_home / "projects" / "my-project"
+        symlink_proj.symlink_to(real_proj)
+
+        with patch("todo.cli._auto_project", return_value="my-project"):
+            runner.invoke(app, ["add", "Test task"])
+        list_result = runner.invoke(app, ["list", "-a"])
+        todo_id = _extract_id(list_result.output, "Test task")
+        assert todo_id is not None
+
+        with (
+            patch("todo.cli._auto_project", return_value="my-project"),
+            patch("shutil.which", return_value="/usr/bin/claude"),
+        ):
+            result = runner.invoke(app, ["start", todo_id, "claude"])
+            assert result.exit_code == 1
+            assert "symlink" in result.output.lower()
+
 
 class TestArchive:
     def test_archive_done_item(self, mock_home: Path):

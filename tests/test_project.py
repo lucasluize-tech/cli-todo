@@ -211,3 +211,19 @@ class TestGenerateLlmFileSections:
         )
         assert not (tmp_path / "claude.local.md").exists()
         assert not (tmp_path / "AGENTS.local.md").exists()
+
+    def test_rejects_symlinked_target(self, tmp_path: Path):
+        real_file = tmp_path / "real.md"
+        real_file.write_text("original")
+
+        symlink_file = tmp_path / "claude.local.md"
+        symlink_file.symlink_to(real_file)
+
+        with pytest.raises(OSError, match="symlink"):
+            generate_llm_file_sections(
+                tmp_path,
+                open_count=1,
+                critical_count=0,
+                llm_files=["claude"],
+                llm_files_local=True,
+            )

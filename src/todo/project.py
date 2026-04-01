@@ -113,6 +113,9 @@ def generate_llm_file_sections(
             continue
         target = project_root / names[llm_files_local]
 
+        if target.is_symlink():
+            raise OSError(f"Refusing to write through symlink: {target}")
+
         if not target.exists():
             target.write_text(section)
             continue

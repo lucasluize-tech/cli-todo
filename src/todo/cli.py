@@ -84,7 +84,10 @@ def _auto_generate(project: str | None) -> None:
 
     # Generate .todos.md
     md_content = generate_todos_md(project, all_todos)
-    (project_root / ".todos.md").write_text(md_content)
+    todos_md_path = project_root / ".todos.md"
+    if todos_md_path.is_symlink():
+        raise OSError(f"Refusing to write through symlink: {todos_md_path}")
+    todos_md_path.write_text(md_content)
 
     # Update LLM files
     open_todos = [t for t in all_todos if t.status in (Status.TODO, Status.IN_PROGRESS)]
@@ -332,6 +335,11 @@ def start(
 
     # Launch LLM
     cmd = _build_llm_command(resolved_llm, prompt, todo_id, project_root)
+    if project_root.is_symlink():
+        err_console.print(
+            f"Error: Project root is a symlink (potential security issue): {project_root}"
+        )
+        raise typer.Exit(1)
     os.chdir(project_root)
     os.execvp(cmd[0], cmd)
 
