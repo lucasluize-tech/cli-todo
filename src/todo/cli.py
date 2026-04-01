@@ -16,6 +16,7 @@ from todo.project import detect_project, generate_llm_file_sections, generate_to
 from todo.renderer import render_todo_detail, render_todo_table
 from todo.store import TodoStore
 from todo.sync import sync as sync_stub
+from todo.updater import check_latest_version, parse_version, run_pipx_upgrade
 from todo import __version__
 
 
@@ -435,6 +436,43 @@ def sync_cmd() -> None:
     """Sync TODOs to cloud (stub)."""
     console = Console()
     console.print(sync_stub())
+
+
+@app.command()
+def update(
+    force: bool = typer.Option(False, "--force", help="Force reinstall even if up to date."),
+) -> None:
+    """Check for updates and upgrade via pipx."""
+    console = Console()
+
+    if force:
+        console.print("[yellow]Forcing reinstall...[/yellow]")
+        success, msg = run_pipx_upgrade(force=True)
+        if not success:
+            err_console.print(f"Error: {msg}")
+            raise typer.Exit(1)
+        console.print(f"[green]{msg}[/green]")
+        return
+
+    latest = check_latest_version()
+    if latest is None:
+        err_console.print("Error: Could not check for updates. Check your internet connection.")
+        raise typer.Exit(1)
+
+    current = __version__
+    if parse_version(latest) <= parse_version(current):
+        console.print(f"[green]Already up to date (v{current})[/green]")
+        return
+
+    console.print(f"[yellow]Update available: v{current} → v{latest}[/yellow]")
+    if not typer.confirm("Upgrade?"):
+        return
+
+    success, msg = run_pipx_upgrade(force=False)
+    if not success:
+        err_console.print(f"Error: {msg}")
+        raise typer.Exit(1)
+    console.print(f"[green]{msg}[/green]")
 
 
 @app.command()
