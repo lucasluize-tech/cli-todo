@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "todo-cli-tool"
-version = "0.1.1"
+version = "0.2.0"
 description = "A CLI tool for managing personal TODOs across life categories and project directories"
 readme = "README.md"
 license = "MIT"
