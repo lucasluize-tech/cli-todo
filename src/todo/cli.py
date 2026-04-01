@@ -489,7 +489,9 @@ def categories_remove(
 
 @defaults_app.command("set")
 def defaults_set(
-    key: str = typer.Argument(..., help="Default key (category or priority)"),
+    key: str = typer.Argument(
+        ..., help="Default key (category, priority, llm, llm_files, llm_files_local)"
+    ),
     value: str = typer.Argument(..., help="Default value"),
 ) -> None:
     """Set a default value."""

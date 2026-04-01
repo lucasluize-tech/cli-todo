@@ -487,6 +487,24 @@ class TestConfigCommands:
         result = runner.invoke(app, ["config", "roots", "remove", "~/nonexistent"])
         assert result.exit_code == 1
 
+    def test_defaults_set_llm(self, mock_home: Path):
+        result = runner.invoke(app, ["config", "defaults", "set", "llm", "codex"])
+        assert result.exit_code == 0
+        assert "Set default" in result.output
+
+    def test_defaults_set_llm_invalid(self, mock_home: Path):
+        result = runner.invoke(app, ["config", "defaults", "set", "llm", "bad"])
+        assert result.exit_code == 1
+        assert "Unsupported LLM" in result.output
+
+    def test_defaults_set_llm_files(self, mock_home: Path):
+        result = runner.invoke(app, ["config", "defaults", "set", "llm_files", "claude,agents"])
+        assert result.exit_code == 0
+
+    def test_defaults_set_llm_files_local(self, mock_home: Path):
+        result = runner.invoke(app, ["config", "defaults", "set", "llm_files_local", "false"])
+        assert result.exit_code == 0
+
 
 class TestGenerate:
     def test_generate_writes_local_files(self, mock_home: Path):
