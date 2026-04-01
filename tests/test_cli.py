@@ -545,6 +545,18 @@ class TestGenerate:
         assert "1 open" in content
 
 
+class TestVersion:
+    def test_version_long_flag(self, mock_home: Path):
+        result = runner.invoke(app, ["--version"])
+        assert result.exit_code == 0
+        assert "todo-cli-tool v" in result.output
+
+    def test_version_short_flag(self, mock_home: Path):
+        result = runner.invoke(app, ["-v"])
+        assert result.exit_code == 0
+        assert "todo-cli-tool v" in result.output
+
+
 def _extract_id(output: str, title: str) -> str | None:
     """Extract TODO ID from list output by finding the line with the title."""
     for line in output.split("\n"):
