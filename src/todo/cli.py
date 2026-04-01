@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import os
+import shutil
 from pathlib import Path
+from typing import Annotated, Optional
 
 import typer
 from rich.console import Console
@@ -27,6 +30,26 @@ config_app.add_typer(defaults_app, name="defaults")
 config_app.add_typer(roots_app, name="roots")
 
 err_console = Console(stderr=True)
+
+LLM_INSTALL_URLS: dict[str, str] = {
+    "claude": "https://docs.anthropic.com/en/docs/claude-code",
+    "codex": "https://github.com/openai/codex",
+    "gemini": "https://github.com/google-gemini/gemini-cli",
+    "opencode": "https://opencode.ai",
+}
+
+
+def _build_llm_command(
+    llm: str, prompt: str, todo_id: str, project_root: Path
+) -> list[str]:
+    """Build the command list for the given LLM."""
+    if llm == "claude":
+        return ["claude", prompt, "-n", f"todo:{todo_id}"]
+    elif llm == "opencode":
+        return ["opencode", str(project_root), "--prompt", prompt]
+    else:
+        # gemini, codex: same pattern
+        return [llm, prompt]
 
 
 def _get_store() -> TodoStore:
@@ -246,8 +269,9 @@ def done(
 @app.command()
 def start(
     todo_id: str = typer.Argument(..., help="TODO ID"),
+    llm: Annotated[Optional[str], typer.Argument(help="LLM to launch (claude, codex, gemini, opencode)")] = None,
 ) -> None:
-    """Mark a TODO as in_progress."""
+    """Mark a TODO as in_progress and optionally launch an LLM session."""
     store = _get_store()
     todo = store.get(todo_id)
     if todo is None:
@@ -259,6 +283,58 @@ def start(
 
     console = Console()
     console.print(f"[green]Started [{todo_id}][/green]")
+
+    # If no project, just mark in_progress and return
+    if updated.project is None:
+        if llm is not None:
+            err_console.print("Error: Cannot start LLM session without a project")
+            raise typer.Exit(1)
+        return
+
+    # Resolve LLM
+    config = store.load_config()
+    resolved_llm = llm or config.defaults.llm
+
+    # Validate LLM
+    if resolved_llm not in LLM_INSTALL_URLS:
+        err_console.print(
+            f"Error: Unsupported LLM '{resolved_llm}'. "
+            f"Choose from: {', '.join(sorted(LLM_INSTALL_URLS))}"
+        )
+        raise typer.Exit(1)
+
+    # Check LLM binary is installed
+    if shutil.which(resolved_llm) is None:
+        err_console.print(
+            f"Error: '{resolved_llm}' is not installed. "
+            f"Install it from: {LLM_INSTALL_URLS[resolved_llm]}"
+        )
+        raise typer.Exit(1)
+
+    # Resolve project root
+    project_root: Path | None = None
+    for root in config.defaults.projects_roots:
+        root_path = Path(root).expanduser().resolve()
+        candidate = root_path / updated.project
+        if candidate.exists():
+            project_root = candidate
+            break
+
+    if project_root is None:
+        err_console.print(
+            f"Error: Could not find project root for '{updated.project}'"
+        )
+        raise typer.Exit(1)
+
+    # Build prompt
+    prompt = updated.title
+    if updated.description:
+        prompt = f"{updated.title}\n\n{updated.description}"
+
+    # Launch LLM
+    cmd = _build_llm_command(resolved_llm, prompt, todo_id, project_root)
+    os.chdir(project_root)
+    os.execvp(cmd[0], cmd)
 
 
 @app.command()

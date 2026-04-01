@@ -192,6 +192,178 @@ class TestStart:
         result = runner.invoke(app, ["start", "nope00"])
         assert result.exit_code == 1
 
+    def test_start_with_llm_launches_process(self, mock_home: Path):
+        proj = mock_home / "projects" / "my-project"
+        proj.mkdir(parents=True)
+
+        with patch("todo.cli._auto_project", return_value="my-project"):
+            runner.invoke(app, ["add", "Build feature"])
+        list_result = runner.invoke(app, ["list", "-a"])
+        todo_id = _extract_id(list_result.output, "Build feature")
+        assert todo_id is not None
+
+        with (
+            patch("todo.cli._auto_project", return_value="my-project"),
+            patch("shutil.which", return_value="/usr/bin/claude"),
+            patch("os.execvp") as mock_exec,
+            patch("os.chdir"),
+        ):
+            result = runner.invoke(app, ["start", todo_id, "claude"])
+            assert result.exit_code == 0
+            assert "Started" in result.output
+            mock_exec.assert_called_once()
+            args = mock_exec.call_args
+            assert args[0][0] == "claude"
+            cmd_list = args[0][1]
+            assert "claude" in cmd_list
+            assert "Build feature" in cmd_list[1]
+            assert "-n" in cmd_list
+            assert f"todo:{todo_id}" in cmd_list[cmd_list.index("-n") + 1]
+
+    def test_start_with_llm_uses_default(self, mock_home: Path):
+        proj = mock_home / "projects" / "my-project"
+        proj.mkdir(parents=True)
+
+        with patch("todo.cli._auto_project", return_value="my-project"):
+            runner.invoke(app, ["add", "Build feature"])
+        list_result = runner.invoke(app, ["list", "-a"])
+        todo_id = _extract_id(list_result.output, "Build feature")
+        assert todo_id is not None
+
+        with (
+            patch("todo.cli._auto_project", return_value="my-project"),
+            patch("shutil.which", return_value="/usr/bin/claude"),
+            patch("os.execvp") as mock_exec,
+            patch("os.chdir"),
+        ):
+            result = runner.invoke(app, ["start", todo_id])
+            assert result.exit_code == 0
+            mock_exec.assert_called_once()
+            assert mock_exec.call_args[0][0] == "claude"
+
+    def test_start_llm_not_installed(self, mock_home: Path):
+        proj = mock_home / "projects" / "my-project"
+        proj.mkdir(parents=True)
+
+        with patch("todo.cli._auto_project", return_value="my-project"):
+            runner.invoke(app, ["add", "Build feature"])
+        list_result = runner.invoke(app, ["list", "-a"])
+        todo_id = _extract_id(list_result.output, "Build feature")
+        assert todo_id is not None
+
+        with (
+            patch("todo.cli._auto_project", return_value="my-project"),
+            patch("shutil.which", return_value=None),
+        ):
+            result = runner.invoke(app, ["start", todo_id, "claude"])
+            assert result.exit_code == 1
+            assert "not installed" in result.output
+            assert "https://" in result.output
+
+    def test_start_unsupported_llm(self, mock_home: Path):
+        proj = mock_home / "projects" / "my-project"
+        proj.mkdir(parents=True)
+
+        with patch("todo.cli._auto_project", return_value="my-project"):
+            runner.invoke(app, ["add", "Build feature"])
+        list_result = runner.invoke(app, ["list", "-a"])
+        todo_id = _extract_id(list_result.output, "Build feature")
+        assert todo_id is not None
+
+        with patch("todo.cli._auto_project", return_value="my-project"):
+            result = runner.invoke(app, ["start", todo_id, "unsupported"])
+            assert result.exit_code == 1
+            assert "Unsupported LLM" in result.output
+
+    def test_start_no_project_no_llm(self, mock_home: Path):
+        runner.invoke(app, ["add", "No project task"])
+        list_result = runner.invoke(app, ["list", "-a"])
+        todo_id = _extract_id(list_result.output, "No project task")
+        assert todo_id is not None
+
+        result = runner.invoke(app, ["start", todo_id])
+        assert result.exit_code == 0
+        assert "Started" in result.output
+
+    def test_start_no_project_with_llm_errors(self, mock_home: Path):
+        runner.invoke(app, ["add", "No project task"])
+        list_result = runner.invoke(app, ["list", "-a"])
+        todo_id = _extract_id(list_result.output, "No project task")
+        assert todo_id is not None
+
+        result = runner.invoke(app, ["start", todo_id, "claude"])
+        assert result.exit_code == 1
+        assert "Cannot start LLM session without a project" in result.output
+
+    def test_start_codex_command(self, mock_home: Path):
+        proj = mock_home / "projects" / "my-project"
+        proj.mkdir(parents=True)
+
+        with patch("todo.cli._auto_project", return_value="my-project"):
+            runner.invoke(app, ["add", "Build feature"])
+        list_result = runner.invoke(app, ["list", "-a"])
+        todo_id = _extract_id(list_result.output, "Build feature")
+        assert todo_id is not None
+
+        with (
+            patch("todo.cli._auto_project", return_value="my-project"),
+            patch("shutil.which", return_value="/usr/bin/codex"),
+            patch("os.execvp") as mock_exec,
+            patch("os.chdir"),
+        ):
+            result = runner.invoke(app, ["start", todo_id, "codex"])
+            assert result.exit_code == 0
+            args = mock_exec.call_args
+            assert args[0][0] == "codex"
+            assert args[0][1] == ["codex", "Build feature"]
+
+    def test_start_opencode_command(self, mock_home: Path):
+        proj = mock_home / "projects" / "my-project"
+        proj.mkdir(parents=True)
+
+        with patch("todo.cli._auto_project", return_value="my-project"):
+            runner.invoke(app, ["add", "Build feature"])
+        list_result = runner.invoke(app, ["list", "-a"])
+        todo_id = _extract_id(list_result.output, "Build feature")
+        assert todo_id is not None
+
+        with (
+            patch("todo.cli._auto_project", return_value="my-project"),
+            patch("shutil.which", return_value="/usr/bin/opencode"),
+            patch("os.execvp") as mock_exec,
+            patch("os.chdir"),
+        ):
+            result = runner.invoke(app, ["start", todo_id, "opencode"])
+            assert result.exit_code == 0
+            args = mock_exec.call_args
+            assert args[0][0] == "opencode"
+            cmd = args[0][1]
+            assert cmd[0] == "opencode"
+            assert str(proj) in cmd[1]
+            assert "--prompt" in cmd
+
+    def test_start_with_description_in_prompt(self, mock_home: Path):
+        proj = mock_home / "projects" / "my-project"
+        proj.mkdir(parents=True)
+
+        with patch("todo.cli._auto_project", return_value="my-project"):
+            runner.invoke(app, ["add", "Build feature", "-d", "Some details here"])
+        list_result = runner.invoke(app, ["list", "-a"])
+        todo_id = _extract_id(list_result.output, "Build feature")
+        assert todo_id is not None
+
+        with (
+            patch("todo.cli._auto_project", return_value="my-project"),
+            patch("shutil.which", return_value="/usr/bin/claude"),
+            patch("os.execvp") as mock_exec,
+            patch("os.chdir"),
+        ):
+            result = runner.invoke(app, ["start", todo_id, "claude"])
+            assert result.exit_code == 0
+            prompt = mock_exec.call_args[0][1][1]
+            assert "Build feature" in prompt
+            assert "Some details here" in prompt
+
 
 class TestArchive:
     def test_archive_done_item(self, mock_home: Path):
