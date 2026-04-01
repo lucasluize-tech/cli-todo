@@ -10,6 +10,7 @@ from typing import Annotated
 import typer
 from rich.console import Console
 
+from todo import __version__
 from todo.config import ConfigManager
 from todo.models import Priority, Status, Todo
 from todo.project import detect_project, generate_llm_file_sections, generate_todos_md
@@ -17,7 +18,6 @@ from todo.renderer import render_todo_detail, render_todo_table
 from todo.store import TodoStore
 from todo.sync import sync as sync_stub
 from todo.updater import check_latest_version, parse_version, run_pipx_upgrade
-from todo import __version__
 
 
 def _version_callback(value: bool) -> None:
@@ -34,10 +34,18 @@ app = typer.Typer(help="CLI TODO tool for managing personal TODOs.")
 def main(
     version: Annotated[
         bool,
-        typer.Option("--version", "-v", help="Show version and exit.", callback=_version_callback, is_eager=True),
+        typer.Option(
+            "--version",
+            "-v",
+            help="Show version and exit.",
+            callback=_version_callback,
+            is_eager=True,
+        ),
     ] = False,
 ) -> None:
     """CLI TODO tool for managing personal TODOs."""
+
+
 config_app = typer.Typer(help="Manage configuration.")
 categories_app = typer.Typer(help="Manage categories.")
 defaults_app = typer.Typer(help="Manage defaults.")

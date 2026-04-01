@@ -18,7 +18,7 @@ def parse_version(version: str) -> tuple[int, ...]:
 def check_latest_version() -> str | None:
     """Fetch the latest version from PyPI. Returns None on failure."""
     try:
-        with urlopen(PYPI_URL, timeout=5) as response:  # noqa: S310
+        with urlopen(PYPI_URL, timeout=5) as response:
             data = json.loads(response.read())
             return str(data["info"]["version"])
     except (OSError, json.JSONDecodeError, KeyError):
@@ -35,7 +35,7 @@ def run_pipx_upgrade(*, force: bool) -> tuple[bool, str]:
         cmd.append("--force")
     cmd.append("todo-cli-tool")
 
-    result = subprocess.run(cmd, check=False)  # noqa: S603
+    result = subprocess.run(cmd, check=False)
     if result.returncode != 0:
         return False, "Upgrade failed. Run 'pipx upgrade todo-cli-tool' manually."
     return True, "Upgrade complete!"

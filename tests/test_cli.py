@@ -577,6 +577,7 @@ class TestUpdate:
     @patch("todo.cli.check_latest_version")
     def test_update_already_latest(self, mock_check: MagicMock, mock_home: Path):
         from todo import __version__
+
         mock_check.return_value = __version__
         result = runner.invoke(app, ["update"])
         assert result.exit_code == 0
@@ -594,7 +595,10 @@ class TestUpdate:
         assert result.exit_code == 0
         mock_upgrade.assert_called_once_with(force=True)
 
-    @patch("todo.cli.run_pipx_upgrade", return_value=(False, "pipx not found -- install manually with: pipx install todo-cli-tool"))
+    @patch(
+        "todo.cli.run_pipx_upgrade",
+        return_value=(False, "pipx not found -- install manually with: pipx install todo-cli-tool"),
+    )
     def test_update_force_pipx_missing(self, mock_upgrade: MagicMock, mock_home: Path):
         result = runner.invoke(app, ["update", "--force"])
         assert result.exit_code == 1
