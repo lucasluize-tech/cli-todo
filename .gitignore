@@ -9,3 +9,5 @@ build/
 htmlcov/
 *.xml
 docs/
+.todos.md
+CLAUDE.local.md
